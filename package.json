@@ -6,20 +6,20 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "build": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@types/node": "^26.6.5",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.14",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
-    "@types/node": "^26.6.5",
-    "drizzle-kit": "^0.31.11"
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"
