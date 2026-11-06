@@ -6,18 +6,20 @@ declare const process: {
   env: Record<string, string | undefined>;
 };
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || "";
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not set in environment variables");
+  console.warn("⚠️ DATABASE_URL is not set in environment variables!");
 }
 
-export const client = postgres(connectionString, {
-  ssl: "require",
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+export const client = connectionString
+  ? postgres(connectionString, {
+      ssl: "require",
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    })
+  : (null as any);
 
-export const db = drizzle(client, { schema });
+export const db = client ? drizzle(client, { schema }) : (null as any);
 export * from "./schema";

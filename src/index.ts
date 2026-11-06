@@ -20,20 +20,36 @@ app.use(
   })
 );
 
-// Health check endpoint
-app.get("/", (c) => {
+// Global error handler
+app.onError((err, c) => {
+  console.error("Server Error:", err);
+  return c.json(
+    {
+      success: false,
+      error: err.message || "Internal Server Error",
+    },
+    500
+  );
+});
+
+// Health check handler
+const healthCheck = (c: any) => {
+  const hasDb = Boolean(process.env.DATABASE_URL);
   return c.json({
     status: "online",
-    framework: "Hono + Bun",
+    framework: "Hono",
     orm: "Drizzle ORM",
-    database: "Neon Serverless Postgres",
+    database: hasDb ? "Neon Serverless Postgres" : "MISSING DATABASE_URL in Vercel settings",
     endpoints: {
       todos: "/api/todos",
       daily: "/api/daily",
       stats: "/api/stats",
     },
   });
-});
+};
+
+app.get("/", healthCheck);
+app.get("/api", healthCheck);
 
 // Mount master API router
 app.route("/api", apiRouter);
