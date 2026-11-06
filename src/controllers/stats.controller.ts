@@ -1,9 +1,9 @@
-import { dailyTasks, db, todos } from "../db";
 import { sql } from "drizzle-orm";
-import { Context } from "hono";
+import { Request, Response } from "express";
+import { dailyTasks, db, todos } from "../db";
 
 export class StatsController {
-  static async getStats(c: Context) {
+  static async getStats(_req: Request, res: Response): Promise<void> {
     try {
       const today = new Date().toISOString().slice(0, 10);
 
@@ -34,7 +34,7 @@ export class StatsController {
       const completedHabits = dailyStats?.completedHabits || 0;
       const habitCompletionRate = totalHabits > 0 ? Math.round((completedHabits / totalHabits) * 100) : 0;
 
-      return c.json({
+      res.json({
         success: true,
         data: {
           totalTodos,
@@ -51,8 +51,8 @@ export class StatsController {
         },
       });
     } catch (error: any) {
-      console.error("Error fetching stats with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }

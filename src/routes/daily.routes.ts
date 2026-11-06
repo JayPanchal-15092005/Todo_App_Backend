@@ -1,7 +1,7 @@
-import { Hono } from "hono";
+import { Router } from "express";
 import { DailyController } from "../controllers/daily.controller";
 
-export const dailyRouter = new Hono();
+export const dailyRouter = Router();
 
 dailyRouter.get("/", DailyController.getDailyTasks);
 dailyRouter.post("/", DailyController.createDailyTask);

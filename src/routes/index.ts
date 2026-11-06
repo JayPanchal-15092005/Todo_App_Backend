@@ -1,10 +1,10 @@
-import { Hono } from "hono";
-import { todosRouter } from "./todos.routes";
+import { Router } from "express";
 import { dailyRouter } from "./daily.routes";
 import { statsRouter } from "./stats.routes";
+import { todosRouter } from "./todos.routes";
 
-export const apiRouter = new Hono();
+export const apiRouter = Router();
 
-apiRouter.route("/todos", todosRouter);
-apiRouter.route("/daily", dailyRouter);
-apiRouter.route("/stats", statsRouter);
+apiRouter.use("/todos", todosRouter);
+apiRouter.use("/daily", dailyRouter);
+apiRouter.use("/stats", statsRouter);

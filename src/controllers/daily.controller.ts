@@ -1,12 +1,10 @@
-import { dailyTasks, db } from "../db";
 import { asc, desc, eq, sql } from "drizzle-orm";
-import { Context } from "hono";
+import { Request, Response } from "express";
+import { dailyTasks, db } from "../db";
 
 export class DailyController {
-  static async getDailyTasks(c: Context) {
+  static async getDailyTasks(_req: Request, res: Response): Promise<void> {
     try {
-      const today = new Date().toISOString().slice(0, 10);
-
       const tasks = await db
         .select({
           id: dailyTasks.id,
@@ -25,25 +23,26 @@ export class DailyController {
           asc(dailyTasks.id)
         );
 
-      return c.json({ success: true, data: tasks });
+      res.json({ success: true, data: tasks });
     } catch (error: any) {
-      console.error("Error fetching daily tasks with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error fetching daily tasks:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async createDailyTask(c: Context) {
+  static async createDailyTask(req: Request, res: Response): Promise<void> {
     try {
-      const { title, category = "Habit", frequency = "daily" } = await c.req.json();
+      const { title, category = "Habit", frequency = "daily" } = req.body;
 
-      if (!title || title.trim() === "") {
-        return c.json({ success: false, error: "Title is required" }, 400);
+      if (!title || String(title).trim() === "") {
+        res.status(400).json({ success: false, error: "Title is required" });
+        return;
       }
 
       const [task] = await db
         .insert(dailyTasks)
         .values({
-          title: title.trim(),
+          title: String(title).trim(),
           category,
           frequency,
           streak: 0,
@@ -51,25 +50,22 @@ export class DailyController {
         })
         .returning();
 
-      return c.json(
-        {
-          success: true,
-          data: {
-            ...task,
-            is_completed_today: false,
-          },
+      res.status(201).json({
+        success: true,
+        data: {
+          ...task,
+          is_completed_today: false,
         },
-        201
-      );
+      });
     } catch (error: any) {
-      console.error("Error creating daily task with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error creating daily task:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async toggleDailyTask(c: Context) {
+  static async toggleDailyTask(req: Request, res: Response): Promise<void> {
     try {
-      const id = Number(c.req.param("id"));
+      const id = Number(req.params.id);
 
       const [task] = await db
         .select({
@@ -87,7 +83,8 @@ export class DailyController {
         .where(eq(dailyTasks.id, id));
 
       if (!task) {
-        return c.json({ success: false, error: "Daily task not found" }, 404);
+        res.status(404).json({ success: false, error: "Daily task not found" });
+        return;
       }
 
       let updated;
@@ -96,7 +93,7 @@ export class DailyController {
       if (task.is_completed_today) {
         // Unmark today
         const newStreak = Math.max(0, (task.streak || 1) - 1);
-        const [res] = await db
+        const [result] = await db
           .update(dailyTasks)
           .set({
             last_completed_date: null,
@@ -105,11 +102,11 @@ export class DailyController {
           .where(eq(dailyTasks.id, id))
           .returning();
 
-        updated = { ...res, is_completed_today: false };
+        updated = { ...result, is_completed_today: false };
       } else {
         // Complete today
         const newStreak = task.was_yesterday ? (task.streak || 0) + 1 : 1;
-        const [res] = await db
+        const [result] = await db
           .update(dailyTasks)
           .set({
             last_completed_date: today,
@@ -118,31 +115,32 @@ export class DailyController {
           .where(eq(dailyTasks.id, id))
           .returning();
 
-        updated = { ...res, is_completed_today: true };
+        updated = { ...result, is_completed_today: true };
       }
 
-      return c.json({ success: true, data: updated });
+      res.json({ success: true, data: updated });
     } catch (error: any) {
-      console.error("Error toggling daily task with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error toggling daily task:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async deleteDailyTask(c: Context) {
+  static async deleteDailyTask(req: Request, res: Response): Promise<void> {
     try {
-      const id = Number(c.req.param("id"));
+      const id = Number(req.params.id);
       const [deleted] = await db
         .delete(dailyTasks)
         .where(eq(dailyTasks.id, id))
         .returning({ id: dailyTasks.id });
 
       if (!deleted) {
-        return c.json({ success: false, error: "Daily task not found" }, 404);
+        res.status(404).json({ success: false, error: "Daily task not found" });
+        return;
       }
 
-      return c.json({ success: true, data: { id } });
+      res.json({ success: true, data: { id } });
     } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }

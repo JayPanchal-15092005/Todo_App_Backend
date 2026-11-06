@@ -1,7 +1,7 @@
-import { Hono } from "hono";
+import { Router } from "express";
 import { TodosController } from "../controllers/todos.controller";
 
-export const todosRouter = new Hono();
+export const todosRouter = Router();
 
 todosRouter.get("/", TodosController.getTodos);
 todosRouter.post("/", TodosController.createTodo);

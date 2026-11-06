@@ -1,14 +1,14 @@
-import { db, todos } from "../db";
 import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { Context } from "hono";
+import { Request, Response } from "express";
+import { db, todos } from "../db";
 
 export class TodosController {
-  static async getTodos(c: Context) {
+  static async getTodos(req: Request, res: Response): Promise<void> {
     try {
-      const filter = c.req.query("filter") || "all";
-      const category = c.req.query("category");
-      const priority = c.req.query("priority");
-      const search = c.req.query("search");
+      const filter = (req.query.filter as string) || "all";
+      const category = req.query.category as string | undefined;
+      const priority = req.query.priority as string | undefined;
+      const search = req.query.search as string | undefined;
 
       const conditions = [];
 
@@ -55,31 +55,31 @@ export class TodosController {
           desc(todos.created_at)
         );
 
-      return c.json({ success: true, data: results });
+      res.json({ success: true, data: results });
     } catch (error: any) {
-      console.error("Error fetching todos with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error fetching todos:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async getTodoById(c: Context) {
+  static async getTodoById(req: Request, res: Response): Promise<void> {
     try {
-      const id = Number(c.req.param("id"));
+      const id = Number(req.params.id);
       const [todo] = await db.select().from(todos).where(eq(todos.id, id));
 
       if (!todo) {
-        return c.json({ success: false, error: "Todo not found" }, 404);
+        res.status(404).json({ success: false, error: "Todo not found" });
+        return;
       }
 
-      return c.json({ success: true, data: todo });
+      res.json({ success: true, data: todo });
     } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async createTodo(c: Context) {
+  static async createTodo(req: Request, res: Response): Promise<void> {
     try {
-      const body = await c.req.json();
       const {
         title,
         notes,
@@ -88,17 +88,18 @@ export class TodosController {
         dueDate,
         dueTime,
         reminderEnabled = false,
-      } = body;
+      } = req.body;
 
-      if (!title || title.trim() === "") {
-        return c.json({ success: false, error: "Title is required" }, 400);
+      if (!title || String(title).trim() === "") {
+        res.status(400).json({ success: false, error: "Title is required" });
+        return;
       }
 
       const [newTodo] = await db
         .insert(todos)
         .values({
-          title: title.trim(),
-          notes: notes ? notes.trim() : null,
+          title: String(title).trim(),
+          notes: notes ? String(notes).trim() : null,
           priority,
           category,
           due_date: dueDate || null,
@@ -108,20 +109,21 @@ export class TodosController {
         })
         .returning();
 
-      return c.json({ success: true, data: newTodo }, 201);
+      res.status(201).json({ success: true, data: newTodo });
     } catch (error: any) {
-      console.error("Error creating todo with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error creating todo:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async toggleTodo(c: Context) {
+  static async toggleTodo(req: Request, res: Response): Promise<void> {
     try {
-      const id = Number(c.req.param("id"));
+      const id = Number(req.params.id);
 
       const [todo] = await db.select().from(todos).where(eq(todos.id, id));
       if (!todo) {
-        return c.json({ success: false, error: "Todo not found" }, 404);
+        res.status(404).json({ success: false, error: "Todo not found" });
+        return;
       }
 
       const newCompleted = !todo.is_completed;
@@ -137,25 +139,24 @@ export class TodosController {
         .where(eq(todos.id, id))
         .returning();
 
-      return c.json({ success: true, data: updated });
+      res.json({ success: true, data: updated });
     } catch (error: any) {
-      console.error("Error toggling todo with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error toggling todo:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async updateTodo(c: Context) {
+  static async updateTodo(req: Request, res: Response): Promise<void> {
     try {
-      const id = Number(c.req.param("id"));
-      const body = await c.req.json();
-      const { title, notes, priority, category, dueDate, dueTime, reminderEnabled } = body;
+      const id = Number(req.params.id);
+      const { title, notes, priority, category, dueDate, dueTime, reminderEnabled } = req.body;
 
       const updateData: Partial<typeof todos.$inferInsert> = {
         updated_at: new Date(),
       };
 
-      if (title !== undefined) updateData.title = title.trim();
-      if (notes !== undefined) updateData.notes = notes ? notes.trim() : null;
+      if (title !== undefined) updateData.title = String(title).trim();
+      if (notes !== undefined) updateData.notes = notes ? String(notes).trim() : null;
       if (priority !== undefined) updateData.priority = priority;
       if (category !== undefined) updateData.category = category;
       if (dueDate !== undefined) updateData.due_date = dueDate;
@@ -169,41 +170,43 @@ export class TodosController {
         .returning();
 
       if (!updated) {
-        return c.json({ success: false, error: "Todo not found" }, 404);
+        res.status(404).json({ success: false, error: "Todo not found" });
+        return;
       }
 
-      return c.json({ success: true, data: updated });
+      res.json({ success: true, data: updated });
     } catch (error: any) {
-      console.error("Error updating todo with Drizzle:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      console.error("Error updating todo:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async deleteTodo(c: Context) {
+  static async deleteTodo(req: Request, res: Response): Promise<void> {
     try {
-      const id = Number(c.req.param("id"));
+      const id = Number(req.params.id);
       const [deleted] = await db.delete(todos).where(eq(todos.id, id)).returning({ id: todos.id });
 
       if (!deleted) {
-        return c.json({ success: false, error: "Todo not found" }, 404);
+        res.status(404).json({ success: false, error: "Todo not found" });
+        return;
       }
 
-      return c.json({ success: true, data: { id } });
+      res.json({ success: true, data: { id } });
     } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async clearCompleted(c: Context) {
+  static async clearCompleted(req: Request, res: Response): Promise<void> {
     try {
       const deleted = await db
         .delete(todos)
         .where(eq(todos.is_completed, true))
         .returning({ id: todos.id });
 
-      return c.json({ success: true, count: deleted.length });
+      res.json({ success: true, count: deleted.length });
     } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }
