@@ -1,6 +1,6 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
-import { apiRouter } from "./routes";
+import { apiRouter } from "./routes/index.js";
 
 declare const process: {
   env: Record<string, string | undefined>;
