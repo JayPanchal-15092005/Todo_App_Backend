@@ -2,7 +2,7 @@
   "name": "todo-app-backend",
   "version": "1.0.0",
   "module": "src/index.ts",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
