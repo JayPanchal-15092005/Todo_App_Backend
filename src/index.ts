@@ -3,6 +3,10 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { apiRouter } from "./routes";
 
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 export const app = new Hono();
 
 // Middlewares
